@@ -31,9 +31,19 @@ telegram_bot = VideoServerTelegramBot(
     allowed_users_fn=os.path.join(settings.DATA_DIR, "allowed_users"),
 )
 
+logging.getLogger("pyftpdlib").setLevel(settings.FTP_LOG_LEVEL)
+
 handler = SurvFTPHandler
+handler.banner = "---"
+handler.masquerade_address = settings.FTP_NAT_ADDRESS
+handler.passive_ports = range(
+    settings.FTP_PASSIVE_PORTS_FROM, settings.FTP_PASSIVE_PORTS_TO
+)
 handler.authorizer = authorizer
 handler.on_new_photo_listeners = {telegram_bot}
+handler.photo_extensions = {
+    ext.strip() for ext in settings.TELEGRAM_PHOTO_EXTENSIONS_TO_SEND_CSV.split(",")
+}
 
 server = FTPServer((settings.FTP_BIND_HOST, settings.FTP_BIND_PORT), handler)
 server.serve_forever()

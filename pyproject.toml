@@ -6,9 +6,9 @@ authors = ["Mikhail Viktorov <mviktorov@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pyftpdlib = "^1.5.6"
 python-telegram-bot = "^13.10"
 pydantic = {extras = ["dotenv"], version = "^1.9.0"}
+pyftpdlib = "^1.5.6"
 
 [tool.poetry.dev-dependencies]
 

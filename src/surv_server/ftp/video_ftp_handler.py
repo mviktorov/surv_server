@@ -1,8 +1,10 @@
+import os.path
+
 from pyftpdlib.handlers import FTPHandler
 
 from surv_server.ftp.ftp_listeners import NewPhotoListener
 
-PHOTO_EXTENSIONS = {'jpg'}
+PHOTO_EXTENSIONS = {"jpg"}
 
 
 class SurvFTPHandler(FTPHandler):
@@ -13,5 +15,7 @@ class SurvFTPHandler(FTPHandler):
 
     def on_file_received(self, file):
         if self.on_new_photo_listeners:
-            for listener in self.on_new_photo_listeners:
-                listener.on_new_photo(file)
+            ext = os.path.splitext(file)[1]
+            if ext and ext[1:].lower() in self.photo_extensions:
+                for listener in self.on_new_photo_listeners:
+                    listener.on_new_photo(file)

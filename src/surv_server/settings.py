@@ -11,8 +11,14 @@ class VideoServerSettings(BaseSettings):
     FTP_UPLOAD_USER: str = "videosrv"
     FTP_UPLOAD_PASSWORD: str
     FTP_UPLOAD_PERMISSIONS: str = "eamw"
+    FTP_PASSIVE_PORTS_FROM: int = 60000
+    FTP_PASSIVE_PORTS_TO: int = 65535
+    FTP_LOG_LEVEL: str = "INFO"
+    FTP_NAT_ADDRESS: str | None = None
 
     DATA_DIR: str = "./data"
+
+    TELEGRAM_PHOTO_EXTENSIONS_TO_SEND_CSV: str = "jpg"
 
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_BOT_ADMIN: str
