@@ -40,23 +40,12 @@ class VideoServerTelegramBot(NewPhotoListener):
     def remove_allowed_user(self, username: str):
         if username not in self.allowed_users:
             return
-        self.clean_up_chat_ids()
         self.allowed_users.remove(username)
         self.save_allowed_users()
-        self.save_chat_ids()
 
     def clear_users(self):
         self.allowed_users.clear()
-        self.clean_up_chat_ids()
         self.save_allowed_users()
-        self.save_chat_ids()
-
-    def clean_up_chat_ids(self):
-        self.chat_ids_to_names = {
-            chat_id: user_name
-            for chat_id, user_name in self.chat_ids_to_names.items()
-            if user_name == self.bot_admin or user_name in self.allowed_users
-        }
 
     def save_allowed_users(self):
         with open(self.allowed_users_fn, "w") as f:
@@ -107,23 +96,29 @@ class VideoServerTelegramBot(NewPhotoListener):
         self.dispatcher.add_handler(start_handler)
 
         def add_user(update: Update, context: CallbackContext):
-            if context.args and context.args[0]:
+            username: str = update.effective_chat.username
+            if username == self.bot_admin and context.args and context.args[0]:
                 self.add_allowed_user(context.args[0])
 
         def remove_user(update: Update, context: CallbackContext):
-            if context.args and context.args[0]:
+            username: str = update.effective_chat.username
+            if username == self.bot_admin and context.args and context.args[0]:
                 self.remove_allowed_user(context.args[0])
 
         def clear_users(update: Update, context: CallbackContext):
-            self.clear_users()
+            username: str = update.effective_chat.username
+            if username == self.bot_admin:
+                self.clear_users()
 
         def list_users(update: Update, context: CallbackContext):
-            context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="\n".join(self.allowed_users)
-                if self.allowed_users
-                else "Only you.",
-            )
+            username: str = update.effective_chat.username
+            if username == self.bot_admin:
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="\n".join(self.allowed_users)
+                    if self.allowed_users
+                    else "Only you.",
+                )
 
         self.dispatcher.add_handler(
             CommandHandler("add_user", add_user, pass_args=True)
@@ -146,6 +141,8 @@ class VideoServerTelegramBot(NewPhotoListener):
 
     def on_new_photo(self, local_fn: str):
         for chat_id, username in self.chat_ids_to_names.items():
+            if username != self.bot_admin and username not in self.allowed_users:
+                continue
             try:
                 with open(local_fn, "rb") as f:
                     self.dispatcher.bot.send_photo(chat_id, f)
