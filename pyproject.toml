@@ -9,8 +9,16 @@ python = "^3.10"
 python-telegram-bot = "^13.10"
 pydantic = {extras = ["dotenv"], version = "^1.9.0"}
 pyftpdlib = "^1.5.6"
+tortoise-orm = {extras = ["asyncpg"], version = "^0.18.1"}
+aerich = "^0.6.2"
+aioftp = "^0.20.0"
 
 [tool.poetry.dev-dependencies]
+
+[tool.aerich]
+tortoise_orm = "surv_server.tortoise.db.TORTOISE_ORM"
+location = "./src/surv_server/migrations"
+src_folder = "./src"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

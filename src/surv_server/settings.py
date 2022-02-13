@@ -6,6 +6,14 @@ env_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 
 class VideoServerSettings(BaseSettings):
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_DB_NAME: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+
+    FN_REGEXP_TO_CAMERA: str
+
     FTP_BIND_HOST: str = "0.0.0.0"
     FTP_BIND_PORT: int = 2121
     FTP_UPLOAD_USER: str = "videosrv"

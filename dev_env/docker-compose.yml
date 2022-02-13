@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:13.1
+    ports:
+      - ${DEV_POSTGRES_PORT:-5437}:5432
+    volumes:
+      - db-data:/var/lib/postgresql/data/pgdata
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_USER=${DEV_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${DEV_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${DEV_POSTGRES_DB}
+
+volumes:
+  db-data:
