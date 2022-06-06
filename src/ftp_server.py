@@ -3,11 +3,11 @@ import logging
 import os
 
 import aioftp
-from tortoise import Tortoise
 
 from surv_server.ftp.ftp_server import SurvFTPServer
+from surv_server.ftp.ftp_user_manager import SurvServerUserManager
 from surv_server.settings import settings
-from surv_server.tortoise.db import TORTOISE_ORM
+from surv_server.tortoise.db import init_db
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
@@ -19,17 +19,9 @@ async def main():
     ftp_upload_dir = os.path.join(settings.DATA_DIR, "ftp")
     os.makedirs(ftp_upload_dir, exist_ok=True)
 
-    users = (
-        aioftp.User(
-            login=settings.FTP_UPLOAD_USER,
-            password=settings.FTP_UPLOAD_PASSWORD,
-            base_path=ftp_upload_dir,
-            home_path="/",
-            permissions=(aioftp.Permission("/", readable=True, writable=True),),
-        ),
-    )
+    users = SurvServerUserManager()
 
-    await Tortoise.init(TORTOISE_ORM)
+    await init_db()
 
     server = SurvFTPServer(
         users,

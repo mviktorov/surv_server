@@ -27,5 +27,5 @@ TORTOISE_ORM = {
 }
 
 
-async def init():
+async def init_db():
     await Tortoise.init(config=TORTOISE_ORM)

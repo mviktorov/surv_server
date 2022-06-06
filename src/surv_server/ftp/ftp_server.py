@@ -1,10 +1,11 @@
 import asyncio
 import os
 from pathlib import PurePosixPath, Path
+from uuid import uuid4
 
 import aioftp
 
-from surv_server.cameras.cameras import extract_camera_name
+from surv_server.ftp.ftp_user_manager import SurvFtpUser
 from surv_server.settings import settings
 from surv_server.tortoise.models import PhotoRecord
 
@@ -14,17 +15,20 @@ class FTPEventHandler:
         super().__init__()
         self.photo_extensions = {
             ext.lower()
-            for ext in settings.TELEGRAM_PHOTO_EXTENSIONS_TO_SEND_CSV.split(",")
+            for ext in settings.ALLOWED_PHOTO_EXTENSIONS_TO_SEND_CSV.split(",")
         }
 
-    async def file_stored(self, virtual_path: PurePosixPath, real_path: Path):
+    async def file_stored(
+        self, user: SurvFtpUser, virtual_path: PurePosixPath, real_path: Path
+    ):
         if (
             os.path.splitext(virtual_path.name)[1].strip(".").lower()
             in self.photo_extensions
         ):
             fn = virtual_path.as_posix()
-            camera = await extract_camera_name(fn)
-            await PhotoRecord(fn=fn, camera_name=camera).save()
+            await PhotoRecord(
+                fn=fn, ftp_user_id=user.user_id, token=str(uuid4())
+            ).save()
 
 
 class SurvFTPServer(aioftp.Server):
@@ -45,21 +49,23 @@ class SurvFTPServer(aioftp.Server):
             fail_info="Can't open data connection",
         )
         @aioftp.worker
-        async def stor_worker(self: SurvFTPServer, connection, rest):
-            stream = connection.data_connection
-            del connection.data_connection
-            if connection.restart_offset:
+        async def stor_worker(self: SurvFTPServer, con: aioftp.Connection, rest):
+            user = con.user
+            stream = con.data_connection
+            del con.data_connection
+            if con.restart_offset:
                 file_mode = "r+b"
             else:
                 file_mode = mode
-            file_out = connection.path_io.open(real_path, mode=file_mode)
+            file_out = con.path_io.open(real_path, mode=file_mode)
             async with file_out, stream:
-                if connection.restart_offset:
-                    await file_out.seek(connection.restart_offset)
-                async for data in stream.iter_by_block(connection.block_size):
+                if con.restart_offset:
+                    await file_out.seek(con.restart_offset)
+                async for data in stream.iter_by_block(con.block_size):
                     await file_out.write(data)
-            connection.response("226", "data transfer done")
-            await self.ftp_event_handler.file_stored(virtual_path, real_path)
+            con.response("226", "data transfer done")
+
+            await self.ftp_event_handler.file_stored(user, virtual_path, real_path)
             return True
 
         real_path, virtual_path = self.get_paths(connection, rest)

@@ -11,6 +11,7 @@ class VideoServerSettings(BaseSettings):
     POSTGRES_DB_NAME: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
+    POSTGRES_PASSWORD_SALT: str
 
     FN_REGEXP_TO_CAMERA: str
 
@@ -26,7 +27,7 @@ class VideoServerSettings(BaseSettings):
 
     DATA_DIR: str = "./data"
 
-    TELEGRAM_PHOTO_EXTENSIONS_TO_SEND_CSV: str = "jpg"
+    ALLOWED_PHOTO_EXTENSIONS_TO_SEND_CSV: str = ",jpg"
 
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_BOT_ADMIN: str
