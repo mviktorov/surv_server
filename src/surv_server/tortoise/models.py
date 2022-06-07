@@ -26,7 +26,11 @@ class PhotoRecord(Model):
     fn = fields.CharField(max_length=1024, null=False, unique=False)
 
     def get_real_path(self) -> Path:
-        return self.ftp_user.get_base_path() / self.fn.strip("/")
+        return (
+            self.ftp_user.get_base_path()
+            / Path(self.datetime.date().isoformat())
+            / self.fn.strip("/")
+        )
 
     def __str__(self):
         return self.fn

@@ -1,39 +1,41 @@
 import asyncio
 import os
-from pathlib import PurePosixPath, Path
 from uuid import uuid4
 
 import aioftp
 
-from surv_server.ftp.ftp_user_manager import SurvFtpUser
-from surv_server.settings import settings
 from surv_server.tortoise.models import PhotoRecord
-
-
-class FTPEventHandler:
-    def __init__(self) -> None:
-        super().__init__()
-        self.photo_extensions = {
-            ext.lower()
-            for ext in settings.ALLOWED_PHOTO_EXTENSIONS_TO_SEND_CSV.split(",")
-        }
-
-    async def file_stored(
-        self, user: SurvFtpUser, virtual_path: PurePosixPath, real_path: Path
-    ):
-        if (
-            os.path.splitext(virtual_path.name)[1].strip(".").lower()
-            in self.photo_extensions
-        ):
-            fn = virtual_path.as_posix()
-            await PhotoRecord(
-                fn=fn, ftp_user_id=user.user_id, token=str(uuid4())
-            ).save()
 
 
 class SurvFTPServer(aioftp.Server):
     async def noop(self, connection, rest):
         connection.response("200", "boring")
+        return True
+
+    @aioftp.ConnectionConditions(aioftp.ConnectionConditions.login_required)
+    async def mkd(self, connection, rest):
+        connection.response("257", "")
+        return True
+
+    @aioftp.ConnectionConditions(aioftp.ConnectionConditions.login_required)
+    async def cwd(self, connection, rest):
+        real_path, virtual_path = self.get_paths(connection, rest)
+        connection.current_directory = virtual_path
+        connection.response("250", "")
+        return True
+
+    @aioftp.ConnectionConditions(aioftp.ConnectionConditions.login_required)
+    async def rmd(self, connection, rest):
+        connection.response("250", "")
+        return True
+
+    @aioftp.ConnectionConditions(aioftp.ConnectionConditions.login_required)
+    async def dele(self, connection, rest):
+        connection.response("250", "")
+        return True
+
+    async def not_implemented(self, connection, rest):
+        connection.response("502", "Not implemented")
         return True
 
     @aioftp.ConnectionConditions(
@@ -65,17 +67,24 @@ class SurvFTPServer(aioftp.Server):
                     await file_out.write(data)
             con.response("226", "data transfer done")
 
-            await self.ftp_event_handler.file_stored(user, virtual_path, real_path)
             return True
 
         real_path, virtual_path = self.get_paths(connection, rest)
-        if await connection.path_io.is_dir(real_path.parent):
-            coro = stor_worker(self, connection, rest)
-            task = asyncio.create_task(coro)
-            connection.extra_workers.add(task)
-            code, info = "150", "data transfer started"
-        else:
-            code, info = "550", "path unreachable"
+
+        ext = os.path.splitext(virtual_path.name)[1].lower()
+        token = str(uuid4())
+        fn = token + ext
+
+        photo_record = await PhotoRecord.create(
+            fn=fn, ftp_user=connection.user.user_model, token=token
+        )
+        real_path = photo_record.get_real_path()
+        real_path.parent.mkdir(parents=True, exist_ok=True)
+
+        coro = stor_worker(self, connection, rest)
+        task = asyncio.create_task(coro)
+        connection.extra_workers.add(task)
+        code, info = "150", "data transfer started"
         connection.response(code, info)
         return True
 
@@ -115,5 +124,31 @@ class SurvFTPServer(aioftp.Server):
             encoding=encoding,
             ssl=ssl,
         )
-        self.ftp_event_handler = FTPEventHandler()
-        self.commands_mapping["noop"] = self.noop
+        self.commands_mapping = {
+            "noop": self.noop,
+            "abor": self.abor,
+            "appe": self.not_implemented,
+            "cdup": self.cdup,
+            "cwd": self.cwd,
+            "dele": self.dele,
+            "epsv": self.epsv,
+            "list": self.not_implemented,
+            "mkd": self.mkd,
+            "mlsd": self.not_implemented,
+            "mlst": self.not_implemented,
+            "pass": self.pass_,
+            "pasv": self.pasv,
+            "pbsz": self.pbsz,
+            "prot": self.prot,
+            "pwd": self.pwd,
+            "quit": self.quit,
+            "rest": self.rest,
+            "retr": self.not_implemented,
+            "rmd": self.rmd,
+            "rnfr": self.not_implemented,
+            "rnto": self.not_implemented,
+            "stor": self.stor,
+            "syst": self.syst,
+            "type": self.type,
+            "user": self.user,
+        }

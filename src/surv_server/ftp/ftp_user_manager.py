@@ -13,7 +13,7 @@ class SurvFtpUser(User):
             u.password_hash,
             base_path=u.get_base_path(),
         )
-        self.user_id = u.id
+        self.user_model = u
 
 
 class SurvServerUserManager(AbstractUserManager):
